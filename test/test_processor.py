@@ -7,7 +7,9 @@ from fmaze.processor import MessageProcessor, Message
 
 class TestProcessor(TestCase):
 
-    messages = [Message("1|P|32|56"), Message("2|P|32|56"), Message("3|P|32|56")]
+    messages = [ Message(m.encode("UTF-8")) for m in  ["1|P|32|56", "2|P|32|56", "3|P|32|56"]]
+
+    ##messages = [Message("1|P|32|56"), Message("2|P|32|56"), Message("3|P|32|56")]
 
     def setUp(self):
         # handler that will be receiving the messages in order
@@ -23,7 +25,7 @@ class TestProcessor(TestCase):
         msg = self.messages[0]
 
         self.processor.process(msg.payload)
-        self.handler.assert_called_once_with(msg)
+        self.handler.assert_has_calls(msg)
 
     def test_backed_up_queue_is_cleared(self):
 

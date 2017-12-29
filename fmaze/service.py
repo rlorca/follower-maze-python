@@ -1,42 +1,43 @@
 import asyncore
 import logging
 
-
-from io import StringIO
+from io import BytesIO
 from fmaze.state import State
+from fmaze.processor import MessageProcessor, Protocol
 
-logger = logging.getLogger("service")
-logger.setLevel(logging.DEBUG)
+def initialize_logger():
+    logger = logging.getLogger("service")
+    logger.setLevel(logging.DEBUG)
 
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-#ch.setLevel(logging.ERROR)
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
 
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(thread)s - %(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-# add the handlers to the logger
-logger.addHandler(ch)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter('%(asctime)s - %(thread)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    # add the handlers to the logger
+    logger.addHandler(ch)
 
-state = State()
+    return logger
 
-class BobServer(asyncore.dispatcher):
+class SimpleServer(asyncore.dispatcher):
 
-    def __init__(self, host, port, handler):
+    def __init__(self, port, handler):
         asyncore.dispatcher.__init__(self)
         self.create_socket()
         self.set_reuse_addr()
-        self.bind((host, port))
+        self.bind(("0.0.0.0", port))
         self.listen(5)
         self.handler = handler
+        self.port = port
 
     def __enter__(self):
+        logger.info("Service %d started.", self.port)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-        logger.info("Server closed {}", self.addr)
-
+        logger.info("Service %d closed.", self.port)
 
     def handle_accepted(self, sock, addr):
         self.handler(sock)
@@ -44,28 +45,30 @@ class BobServer(asyncore.dispatcher):
 
 class EventHandler(asyncore.dispatcher):
 
-    read_buffer_size = 8192
-
     def handle_read(self):
         data = self.recv(8192)
-        logger.debug("Got message %s", len(data))
         if data:
-            buffer = StringIO(data.decode("UTF-8"))
-            for l in buffer.readlines():
-                state.new_event(l)
+            for l in BytesIO(data).readlines():
+                processor.process(l)
+
 
 class PeerHandler(asyncore.dispatcher_with_send):
 
     def handle_read(self):
         data = self.recv(256)
         if data:
-            peer_id = data.decode("UTF-8").strip()
+            peer_id = data.decode(Protocol.ENCODING).strip()
             logger.debug("Handling peer %s", peer_id)
             state.register_connection(peer_id, self)
 
 
-with BobServer("0.0.0.0", 9090, EventHandler), \
-     BobServer("0.0.0.0", 9099, PeerHandler):
+logger = initialize_logger()
 
-    logger.info("Servers started")
+state = State()
+processor = MessageProcessor(state)
+
+with SimpleServer(Protocol.SERVER_EVENT_PORT, EventHandler), \
+     SimpleServer(Protocol.SERVER_PEER_PORT, PeerHandler):
+
+    logger.info("Starting service loop")
     asyncore.loop()

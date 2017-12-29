@@ -1,7 +1,7 @@
 
 from unittest import TestCase
 
-from fmaze.follow_graph import FollowNetwork
+from fmaze.state import FollowNetwork
 
 class TestFollowNetwork(TestCase):
 
