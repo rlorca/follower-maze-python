@@ -2,8 +2,8 @@ import asyncore
 import logging
 
 from io import BytesIO
-from fmaze.state import State
-from fmaze.processor import MessageProcessor, Protocol
+from fmaze.processor import Protocol
+
 
 def initialize_logger():
     logger = logging.getLogger("service")
@@ -20,15 +20,18 @@ def initialize_logger():
 
     return logger
 
+
+logger = initialize_logger()
+
 class SimpleServer(asyncore.dispatcher):
 
-    def __init__(self, port, handler):
+    def __init__(self, port, handler_builder):
         asyncore.dispatcher.__init__(self)
         self.create_socket()
         self.set_reuse_addr()
         self.bind(("0.0.0.0", port))
         self.listen(5)
-        self.handler = handler
+        self.handler_builder = handler_builder
         self.port = port
 
     def __enter__(self):
@@ -40,35 +43,41 @@ class SimpleServer(asyncore.dispatcher):
         logger.info("Service %d closed.", self.port)
 
     def handle_accepted(self, sock, addr):
-        self.handler(sock)
+        self.handler_builder.build(sock)
 
 
-class EventHandler(asyncore.dispatcher):
+class EventHandlerBuilder:
 
-    def handle_read(self):
-        data = self.recv(8192)
-        if data:
-            for l in BytesIO(data).readlines():
-                processor.process(l)
+    def build(self, socket):
+        self.builder(socket)
+
+    def __init__(self, processor):
+
+        class EventHandler(asyncore.dispatcher):
+
+            def handle_read(self):
+                data = self.recv(8192)
+                if data:
+                    for l in BytesIO(data).readlines():
+                        processor.process(l)
+
+        self.builder = EventHandler
 
 
-class PeerHandler(asyncore.dispatcher_with_send):
+class PeerHandlerBuilder:
 
-    def handle_read(self):
-        data = self.recv(256)
-        if data:
-            peer_id = data.decode(Protocol.ENCODING).strip()
-            logger.debug("Handling peer %s", peer_id)
-            state.register_connection(peer_id, self)
+    def build(self, socket):
+        self.builder(socket)
 
+    def __init__(self, state):
 
-logger = initialize_logger()
+        class PeerHandler(asyncore.dispatcher_with_send):
 
-state = State()
-processor = MessageProcessor(state)
+            def handle_read(self):
+                data = self.recv(128)
+                if data:
+                    peer_id = data.decode(Protocol.ENCODING).strip()
+                    logger.debug("Handling peer %s", peer_id)
+                    state.register_connection(peer_id, self)
 
-with SimpleServer(Protocol.SERVER_EVENT_PORT, EventHandler), \
-     SimpleServer(Protocol.SERVER_PEER_PORT, PeerHandler):
-
-    logger.info("Starting service loop")
-    asyncore.loop()
+        self.builder = PeerHandler
