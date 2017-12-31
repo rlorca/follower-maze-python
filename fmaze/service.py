@@ -1,27 +1,10 @@
 import asyncore
-import logging
 
+from .logger import create_logger
 from io import BytesIO
-from fmaze.processor import Protocol
+from .processor import Protocol
 
-
-def initialize_logger():
-    logger = logging.getLogger("service")
-    logger.setLevel(logging.DEBUG)
-
-    # create console handler with a higher log level
-    ch = logging.StreamHandler()
-
-    # create formatter and add it to the handlers
-    formatter = logging.Formatter('%(asctime)s - %(thread)s - %(name)s - %(levelname)s - %(message)s')
-    ch.setFormatter(formatter)
-    # add the handlers to the logger
-    logger.addHandler(ch)
-
-    return logger
-
-
-logger = initialize_logger()
+logger = create_logger(__name__)
 
 class SimpleServer(asyncore.dispatcher):
 
@@ -45,13 +28,18 @@ class SimpleServer(asyncore.dispatcher):
     def handle_accepted(self, sock, addr):
         self.handler_builder.build(sock)
 
+class HandlerBuilder:
 
-class EventHandlerBuilder:
+    def __init__(self):
+        self.builder = None
 
     def build(self, socket):
         self.builder(socket)
 
-    def __init__(self, processor):
+
+class EventHandlerBuilder(HandlerBuilder):
+
+    def __init__(self, event_processor):
 
         class EventHandler(asyncore.dispatcher):
 
@@ -59,15 +47,11 @@ class EventHandlerBuilder:
                 data = self.recv(8192)
                 if data:
                     for l in BytesIO(data).readlines():
-                        processor.process(l)
+                        event_processor.process_message(l)
 
         self.builder = EventHandler
 
-
-class PeerHandlerBuilder:
-
-    def build(self, socket):
-        self.builder(socket)
+class PeerHandlerBuilder(HandlerBuilder):
 
     def __init__(self, state):
 
@@ -77,7 +61,7 @@ class PeerHandlerBuilder:
                 data = self.recv(128)
                 if data:
                     peer_id = data.decode(Protocol.ENCODING).strip()
-                    logger.debug("Handling peer %s", peer_id)
+                    logger.debug("New peer %s connected", peer_id)
                     state.register_connection(peer_id, self)
 
         self.builder = PeerHandler

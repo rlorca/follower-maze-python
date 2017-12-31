@@ -1,12 +1,12 @@
 
 from unittest import TestCase
 
-from fmaze.state import FollowNetwork
+from fmaze.state import _FollowNetwork
 
 class TestFollowNetwork(TestCase):
 
     def setUp(self):
-        self.state = FollowNetwork()
+        self.state = _FollowNetwork()
 
     def test_follow_cycle(self):
 
