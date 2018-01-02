@@ -1,8 +1,11 @@
 import asyncore
 
 from .logger import create_logger
-from io import BytesIO
 from .processor import Protocol
+
+from io import BytesIO
+from typing import Callable
+
 
 logger = create_logger(__name__)
 
@@ -31,7 +34,7 @@ class SimpleServer(asyncore.dispatcher):
 class HandlerBuilder:
 
     def __init__(self):
-        self.builder = None
+        self.builde : Callable = None
 
     def build(self, socket):
         self.builder(socket)
