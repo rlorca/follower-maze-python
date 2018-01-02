@@ -30,22 +30,22 @@ class State(MessageHandler):
         """
         self.peers.close_all()
 
-    def handle_follow(self, payload, id_from, id_to):
-        self.graph.follow(id_from, id_to)
-        self.peers.deliver(id_to, payload)
+    def handle_follow(self, msg):
+        self.graph.follow(msg.id_from, msg.id_to)
+        self.peers.deliver(msg.id_to, msg.payload)
 
-    def handle_unfollow(self, id_from, id_to):
-        self.graph.unfollow(id_from, id_to)
+    def handle_unfollow(self, msg):
+        self.graph.unfollow(msg.id_from, msg.id_to)
 
-    def handle_broadcast(self, payload):
-        self.peers.broadcast(payload)
+    def handle_broadcast(self, msg):
+        self.peers.broadcast(msg.payload)
 
-    def handle_private_message(self, payload, id_to):
-        self.peers.deliver(id_to, payload)
+    def handle_private_message(self, msg):
+        self.peers.deliver(msg.id_to, msg.payload)
 
-    def handle_status_update(self, payload, id_from):
-        for p in self.graph.followers(id_from):
-            self.peers.deliver(p, payload)
+    def handle_status_update(self, msg):
+        for p in self.graph.followers(msg.id_from):
+            self.peers.deliver(p, msg.payload)
 
 
 class _Peers:

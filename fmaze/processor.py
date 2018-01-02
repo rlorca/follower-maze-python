@@ -36,21 +36,6 @@ class Message:
         self.id_from = self.get_at_index_or_none(fields, Protocol.MessageFieldPosition.FROM)
         self.id_to = self.get_at_index_or_none(fields, Protocol.MessageFieldPosition.TO)
 
-    def is_broadcast(self):
-        return self.type == Protocol.MessageType.BROADCAST
-
-    def is_private_message(self):
-        return self.type == Protocol.MessageType.PRIVATE_MESSAGE
-
-    def is_follow(self):
-        return self.type == Protocol.MessageType.FOLLOW
-
-    def is_status_update(self):
-        return self.type == Protocol.MessageType.STATUS_UPDATE
-
-    def is_unfollow(self):
-        return self.type == Protocol.MessageType.UNFOLLOW
-
     def __str__(self):
         return self.payload
 
@@ -67,43 +52,33 @@ class MessageHandler:
     Interface to be extended by classes receiving protocol messages.
     """
 
-    def handle_follow(self, payload: bytes, id_from: str, id_to: str):
+    def handle_follow(self, msg):
         """
 
-        :param payload: message to be delivered to the target
-        :param id_from: user following
-        :param id_to: user being followed
         """
         pass
 
-    def handle_unfollow(self, id_from: str, id_to: str):
+    def handle_unfollow(self, msg):
         """
 
-        :param id_from: user cancelling the follow
-        :param id_to: user being unfollowed
         """
         pass
 
-    def handle_broadcast(self, payload: bytes):
+    def handle_broadcast(self, msg):
         """
 
-        :param payload: message being broadcasted
-        """
-        pass
-
-    def handle_private_message(self, payload: bytes, id_to: str):
-        """
-
-        :param payload: message being delivered
-        :param id_to: id of the message's recipient
         """
         pass
 
-    def handle_status_update(self, payload: bytes, id_from: str):
+    def handle_private_message(self, msg):
         """
 
-        :param payload: raw message
-        :param id_from: id of the user updating its status
+        """
+        pass
+
+    def handle_status_update(self, msg):
+        """
+
         """
         pass
 
@@ -112,7 +87,13 @@ class MessageProcessor:
 
     def __init__(self, handler: MessageHandler):
         self.queue = _MessageQueue()
-        self.handler = handler
+        self.handler_map = {
+            Protocol.MessageType.FOLLOW: handler.handle_follow,
+            Protocol.MessageType.UNFOLLOW: handler.handle_unfollow,
+            Protocol.MessageType.BROADCAST: handler.handle_broadcast,
+            Protocol.MessageType.PRIVATE_MESSAGE: handler.handle_private_message,
+            Protocol.MessageType.STATUS_UPDATE: handler.handle_status_update
+        }
 
     def process_message(self, payload : bytes):
         """
@@ -126,26 +107,15 @@ class MessageProcessor:
 
         # reprocess the queue now
         for m in self.queue.pop():
-            self._dispatch_message(m)
+            logging.debug("Dispatching message %d", m.sequence)
 
-    def _dispatch_message(self, message: Message):
+            if m.type in self.handler_map:
+                self.handler_map[m.type](m)
+            else:
+                logging.warn("Message type %s unknown", m.type)
 
-        logging.debug("Dispatching message %d", message.sequence)
 
-        if message.is_follow():
-            self.handler.handle_follow(message.payload, message.id_from, message.id_to)
 
-        elif message.is_unfollow():
-            self.handler.handle_unfollow(message.id_from, message.id_to)
-
-        elif message.is_broadcast():
-            self.handler.handle_broadcast(message.payload)
-
-        elif message.is_private_message():
-            self.handler.handle_private_message(message.payload, message.id_to)
-
-        elif message.is_status_update():
-            self.handler.handle_status_update(message.payload, message.id_from)
 
 
 class _MessageQueue:
