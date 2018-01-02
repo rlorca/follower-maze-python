@@ -10,9 +10,11 @@ logger = fmaze.logger.create_logger(__name__)
 
 logger.info("Starting application")
 
+ip = "0.0.0.0"
+
 with State() as state, \
-     SimpleServer(Protocol.SERVER_EVENT_PORT, EventHandlerBuilder(MessageProcessor(state))), \
-     SimpleServer(Protocol.SERVER_PEER_PORT, PeerHandlerBuilder(state)):
+     SimpleServer(ip, Protocol.SERVER_EVENT_PORT, EventHandlerBuilder(MessageProcessor(state))), \
+     SimpleServer(ip, Protocol.SERVER_PEER_PORT, PeerHandlerBuilder(state)):
 
     try:
         asyncore.loop()

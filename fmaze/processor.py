@@ -57,12 +57,9 @@ class Message:
         return self.payload == other.payload
 
     @staticmethod
-    def get_at_index_or_none(list, index):
-        if len(list) > index:
-            return list[index]
-        else:
-            None
-
+    def get_at_index_or_none(target, index):
+        if len(target) > index:
+            return target[index]
 
 class MessageHandler:
     """

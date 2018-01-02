@@ -8,11 +8,11 @@ logger = create_logger(__name__)
 
 class SimpleServer(asyncore.dispatcher):
 
-    def __init__(self, port, handler_builder):
+    def __init__(self, address, port, handler_builder):
         asyncore.dispatcher.__init__(self)
         self.create_socket()
         self.set_reuse_addr()
-        self.bind(("0.0.0.0", port))
+        self.bind((address, port))
         self.listen(5)
         self.handler_builder = handler_builder
         self.port = port

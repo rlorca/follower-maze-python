@@ -93,30 +93,14 @@ class _FollowNetwork:
         self.follow_map = {}
 
     def follow(self, follower_id, followee_id):
-        """
-
-        :param follower_id:
-        :param followee_id:
-        """
         if followee_id not in self.follow_map:
             self.follow_map[followee_id] = set()
 
         self.follow_map[followee_id].add(follower_id)
 
     def unfollow(self, follower_id, followee_id):
-        """
-
-        :param follower_id:
-        :param followee_id:
-        :return:
-        """
         return followee_id in self.follow_map and \
                self.follow_map[followee_id].discard(follower_id)
 
     def followers(self, followee_id):
-        """
-
-        :param followee_id:  
-        :return:
-        """
         return frozenset(self.follow_map.get(followee_id, set()))
