@@ -1,3 +1,5 @@
+from asyncore import dispatcher_with_send
+
 from .processor import MessageHandler
 
 from .logger import create_logger
@@ -16,7 +18,7 @@ class State(MessageHandler):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.shutdown()
 
-    def register_connection(self, peer_id, connection):
+    def register_connection(self, peer_id: str, connection: dispatcher_with_send):
         """
         Register a new peer connection
         """
@@ -54,13 +56,13 @@ class _Peers:
     def __init__(self):
         self.peers = {}
 
-    def register(self, peer_id, connection):
+    def register(self, peer_id, connection: dispatcher_with_send):
         """
         Register a new peer
         """
         self.peers[peer_id] = connection
 
-    def deliver(self, peer_id, message):
+    def deliver(self, peer_id, message : bytes):
         """
         Deliver a message to the peer, if connected.
         """
@@ -92,15 +94,15 @@ class _FollowNetwork:
     def __init__(self):
         self.follow_map = {}
 
-    def follow(self, follower_id, followee_id):
+    def follow(self, follower_id : str, followee_id : str):
         if followee_id not in self.follow_map:
             self.follow_map[followee_id] = set()
 
         self.follow_map[followee_id].add(follower_id)
 
-    def unfollow(self, follower_id, followee_id):
+    def unfollow(self, follower_id : str, followee_id : str):
         return followee_id in self.follow_map and \
                self.follow_map[followee_id].discard(follower_id)
 
-    def followers(self, followee_id):
+    def followers(self, followee_id : str):
         return frozenset(self.follow_map.get(followee_id, set()))

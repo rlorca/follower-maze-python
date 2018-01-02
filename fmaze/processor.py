@@ -1,3 +1,4 @@
+from typing import Generator
 
 from .logger import create_logger
 
@@ -26,7 +27,7 @@ class Protocol:
 
 class Message:
 
-    def __init__(self, payload):
+    def __init__(self, payload: bytes):
         self.payload = payload
 
         fields = payload.decode(Protocol.ENCODING).strip().split(Protocol.FIELD_SEPARATOR)
@@ -66,7 +67,7 @@ class MessageHandler:
     Interface to be extended by classes receiving protocol messages.
     """
 
-    def handle_follow(self, payload, id_from, id_to):
+    def handle_follow(self, payload: bytes, id_from: str, id_to: str):
         """
 
         :param payload: message to be delivered to the target
@@ -75,7 +76,7 @@ class MessageHandler:
         """
         pass
 
-    def handle_unfollow(self, id_from, id_to):
+    def handle_unfollow(self, id_from: str, id_to: str):
         """
 
         :param id_from: user cancelling the follow
@@ -83,14 +84,14 @@ class MessageHandler:
         """
         pass
 
-    def handle_broadcast(self, payload):
+    def handle_broadcast(self, payload: bytes):
         """
 
         :param payload: message being broadcasted
         """
         pass
 
-    def handle_private_message(self, payload, id_to):
+    def handle_private_message(self, payload: bytes, id_to: str):
         """
 
         :param payload: message being delivered
@@ -98,7 +99,7 @@ class MessageHandler:
         """
         pass
 
-    def handle_status_update(self, payload, id_from):
+    def handle_status_update(self, payload: bytes, id_from: str):
         """
 
         :param payload: raw message
@@ -109,11 +110,11 @@ class MessageHandler:
 
 class MessageProcessor:
 
-    def __init__(self, handler):
+    def __init__(self, handler: MessageHandler):
         self.queue = _MessageQueue()
         self.handler = handler
 
-    def process_message(self, payload):
+    def process_message(self, payload : bytes):
         """
         Process a message, according to the
 
@@ -127,8 +128,7 @@ class MessageProcessor:
         for m in self.queue.pop():
             self._dispatch_message(m)
 
-
-    def _dispatch_message(self, message):
+    def _dispatch_message(self, message: Message):
 
         logging.debug("Dispatching message %d", message.sequence)
 
@@ -157,14 +157,14 @@ class _MessageQueue:
         self.messages = {}
         self.next_seq = Protocol.INITIAL_SEQ
 
-    def push(self, message):
+    def push(self, message: Message):
         """
         Add a message to the queue.
         :param message: message to be queued
         """
         self.messages[message.sequence] = message
 
-    def pop(self):
+    def pop(self) -> Generator[Message, None, None]:
         """
         Pops all messages available that respect the sequence field.
         """
